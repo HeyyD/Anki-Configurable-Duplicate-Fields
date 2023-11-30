@@ -19,9 +19,10 @@ import json
 import aqt
 from anki import version as anki_version
 from anki.hooks import wrap
-from anki.notes import Note
-from anki.utils import fieldChecksum, stripHTMLMedia, splitFields
+from anki.notes import Note, NoteFieldsCheckResult
+from anki.utils import field_checksum, strip_html_media, split_fields
 from aqt.editor import Editor
+from aqt.operations import QueryOp
 
 # When this is appended to the names of fields, then those fields are considered along with the
 # first field when checking for duplicates in the editor.
@@ -44,11 +45,11 @@ def dupeOrEmptyWithOrds(self):
     2) For a duplicate (2), this returns the list of ordinals that make up the key.
        Otherwise this is None.
     """
-
+    print("Dupe or empty with ords")
     val = self.fields[0]
     if not val.strip():
         return 1, None
-    csum = fieldChecksum(val)
+    csum = field_checksum(val)
     # find any matching csums and compare
     for flds in self.col.db.list(
             "select flds from notes where csum = ? and id != ? and mid = ?",
@@ -63,9 +64,9 @@ def dupeOrEmptyWithOrds(self):
                 field_ords.append(fld["ord"])
 
         all_fields_equal = True
-        fields_split = splitFields(flds)
+        fields_split = split_fields(flds)
         for field_ord in field_ords:
-            if stripHTMLMedia(fields_split[field_ord]) != stripHTMLMedia(self.fields[field_ord]):
+            if strip_html_media(fields_split[field_ord]) != strip_html_media(self.fields[field_ord]):
                 all_fields_equal = False
 
         if all_fields_equal:
@@ -74,11 +75,12 @@ def dupeOrEmptyWithOrds(self):
     return False, None
 
 
-def checkValid(self, _old):
+def checkValid(self):
     """
     Check if the note in the editor has duplicates.  If so, it will highlight the fields that make
     up the note's key.
     """
+    print("Checking valid")
     cols = []
     err = None
     for f in self.note.fields:
@@ -99,10 +101,11 @@ def checkValid(self, _old):
     self.web.eval("setBackgrounds(%s);" % json.dumps(cols))
 
 
-def dupeOrEmpty(self, _old):
+def dupeOrEmpty(self):
     """
     Returns 1 if first is empty; 2 if first is a duplicate, False otherwise.
     """
+    print("Dupe or empty")
     res, field_ords = dupeOrEmptyWithOrds(self)
     return res
 
@@ -114,8 +117,8 @@ def showDupes(self):
     This basically performs the normal dupes search that Anki does but appends additional search
     terms for other keys that have the _pk suffix.
     """
-
-    contents = stripHTMLMedia(self.note.fields[0])
+    print("Show dupes")
+    contents = strip_html_media(self.note.fields[0])
     browser = aqt.dialogs.open("Browser", self.mw)
 
     model = self.note.model()
@@ -130,10 +133,11 @@ def showDupes(self):
     # in addition to having the first field match.
     for fld in model["flds"]:
         # First field is already filtered on by the dupe check.
+        print(fld)
         if fld["ord"] == 0:
             continue
         elif fld["name"].endswith(KEY_SUFFIX):
-            term = stripHTMLMedia(self.note.fields[fld["ord"]])
+            term = strip_html_media(self.note.fields[fld["ord"]])
             cmd_args = (fld["name"], term)
             if '"' in term and "'" in term:
                 # ignore, unfortunately we can't search for it
@@ -147,8 +151,12 @@ def showDupes(self):
     browser.onSearchActivated()
 
 
+def test(self) -> None:
+    print("work ffs")
+
 def setup():
-    Editor.checkValid = wrap(Editor.checkValid, checkValid, "around")
-    Note.dupeOrEmpty = wrap(Note.dupeOrEmpty, dupeOrEmpty, "around")
-    Editor.showDupes = showDupes
+    print("Setting up dupe checking")
+    Editor.checkValid = wrap(Editor.checkValid, checkValid, "after")
+    Note.fields_check = wrap(Note.fields_check, dupeOrEmpty, "after")
+    # Editor.showDupes = showDupes
     # Editor._links["dupes"] = showDupes

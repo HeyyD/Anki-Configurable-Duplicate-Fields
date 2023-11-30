@@ -151,4 +151,4 @@ def setup():
     Editor.checkValid = wrap(Editor.checkValid, checkValid, "around")
     Note.dupeOrEmpty = wrap(Note.dupeOrEmpty, dupeOrEmpty, "around")
     Editor.showDupes = showDupes
-    Editor._links["dupes"] = showDupes
+    # Editor._links["dupes"] = showDupes

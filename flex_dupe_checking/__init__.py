@@ -45,7 +45,6 @@ def dupeOrEmptyWithOrds(self):
     2) For a duplicate (2), this returns the list of ordinals that make up the key.
        Otherwise this is None.
     """
-    print("Dupe or empty with ords")
     val = self.fields[0]
     if not val.strip():
         return 1, None
@@ -105,8 +104,9 @@ def dupeOrEmpty(self):
     """
     Returns 1 if first is empty; 2 if first is a duplicate, False otherwise.
     """
-    print("Dupe or empty")
     res, field_ords = dupeOrEmptyWithOrds(self)
+    print(res)
+
     return res
 
 
@@ -133,7 +133,6 @@ def showDupes(self):
     # in addition to having the first field match.
     for fld in model["flds"]:
         # First field is already filtered on by the dupe check.
-        print(fld)
         if fld["ord"] == 0:
             continue
         elif fld["name"].endswith(KEY_SUFFIX):
@@ -150,13 +149,35 @@ def showDupes(self):
     browser.form.searchEdit.lineEdit().setText(" ".join(search_cmds))
     browser.onSearchActivated()
 
-
 def test(self) -> None:
-    print("work ffs")
+    print("Test")
+    cols = [""] * len(self.note.fields)
+    cloze_hint = ""
+    if result == NoteFieldsCheckResult.DUPLICATE:
+        cols[0] = "dupe"
+    elif result == NoteFieldsCheckResult.NOTETYPE_NOT_CLOZE:
+        cloze_hint = tr.adding_cloze_outside_cloze_notetype()
+    elif result == NoteFieldsCheckResult.FIELD_NOT_CLOZE:
+        cloze_hint = tr.adding_cloze_outside_cloze_field()
+
+    self.web.eval(
+        'require("anki/ui").loaded.then(() => {'
+        f"setBackgrounds({json.dumps(cols)});\n"
+        f"setClozeHint({json.dumps(cloze_hint)});\n"
+        "}); "
+    )
+
+def isDuplicate(self, _old) -> None:
+    result = _old(self)
+    print(result == NoteFieldsCheckResult.DUPLICATE)
+
+    return result
+
 
 def setup():
     print("Setting up dupe checking")
-    Editor.checkValid = wrap(Editor.checkValid, checkValid, "after")
-    Note.fields_check = wrap(Note.fields_check, dupeOrEmpty, "after")
+    # Editor._update_duplicate_display = wrap(Editor._update_duplicate_display, test, "around")
+    Note.fields_check = wrap(Note.fields_check, isDuplicate, "around")
+    # Note.fields_check = wrap(Note.fields_check, dupeOrEmpty, "after")
     # Editor.showDupes = showDupes
     # Editor._links["dupes"] = showDupes

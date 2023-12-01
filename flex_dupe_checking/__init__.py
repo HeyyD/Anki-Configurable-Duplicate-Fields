@@ -29,59 +29,6 @@ from aqt.utils import tr
 # first field when checking for duplicates in the editor.
 KEY_SUFFIX = "_pk"
 
-anki_patch_version = int(anki_version.split(".")[-1])
-
-# Starting with version 20, Anki uses a class to mark the duplicate field.
-if anki_patch_version < 20:
-    use_color_code = True
-else:
-    use_color_code = False
-
-
-def dupeOrEmptyWithOrds(self):
-    """
-    Returns a tuple. The contents of each element are as follows:
-
-    1) 1 if first is empty; 2 if first is a duplicate, False otherwise.
-    2) For a duplicate (2), this returns the list of ordinals that make up the key.
-       Otherwise this is None.
-    """
-    val = self.fields[0]
-    if not val.strip():
-        return 1, None
-    csum = field_checksum(val)
-    # find any matching csums and compare
-    for flds in self.col.db.list(
-            "select flds from notes where csum = ? and id != ? and mid = ?",
-            csum, self.id or 0, self.mid):
-
-        model = self.model()
-        field_ords = [0]
-        for fld in model["flds"]:
-            if fld["ord"] == 0:
-                continue
-            elif fld["name"].endswith(KEY_SUFFIX):
-                field_ords.append(fld["ord"])
-
-        all_fields_equal = True
-        fields_split = split_fields(flds)
-        for field_ord in field_ords:
-            if strip_html_media(fields_split[field_ord]) != strip_html_media(self.fields[field_ord]):
-                all_fields_equal = False
-
-        if all_fields_equal:
-            return 2, field_ords
-
-    return False, None
-
-def dupeOrEmpty(self):
-    """
-    Returns 1 if first is empty; 2 if first is a duplicate, False otherwise.
-    """
-    res, field_ords = dupeOrEmptyWithOrds(self)
-    return res
-
-
 def showDupes(self):
     """
     Shows the duplicates for the current note in the editor by conducting a search in the browser.
@@ -167,30 +114,28 @@ def get_primary_key_field_orders(self) -> list:
         if fld["ord"] == 0:
             continue
         elif fld["name"].endswith(KEY_SUFFIX):
-            field_ords.append((fld["name"], fld["ord"]))
+            field_ords.append(fld["ord"])
 
     return field_ords
 
 def is_duplicate(self, _old) -> tuple:
-    nid = self.id
     primary_key_cols = get_primary_key_field_orders(self)
-    orders = []
+    columns = []
 
-    for col in primary_key_cols:
-        name, order = col
+    for order in primary_key_cols:
         if not self.fields[order].strip():
             continue
         val = self.fields[order]
         for fields in self.col.db.list("select flds from notes where flds LIKE ? and id != ?", "%" + val + "%", self.id or 0):
             for field in split_fields(fields):
-                test = strip_html_media(field)
-                if field_checksum(test) == field_checksum(val):
-                    orders.append(order)
+                normalized = strip_html_media(field)
+                if field_checksum(normalized) == field_checksum(val):
+                    columns.append(order)
 
-    return _old(self), orders
+    return _old(self), columns
 
 def setup():
-    print("Setting up dupe checking")
+    print("Setting up duplicate checking...")
     Editor._check_and_update_duplicate_display_async = wrap(Editor._check_and_update_duplicate_display_async, check_duplicate, "around")
     Note.fields_check = wrap(Note.fields_check, is_duplicate, "around")
     # Editor.showDupes = showDupes

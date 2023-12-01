@@ -74,33 +74,6 @@ def dupeOrEmptyWithOrds(self):
 
     return False, None
 
-
-def checkValid(self):
-    """
-    Check if the note in the editor has duplicates.  If so, it will highlight the fields that make
-    up the note's key.
-    """
-    print("Checking valid")
-    cols = []
-    err = None
-    for f in self.note.fields:
-        if use_color_code:
-            cols.append("#fff")
-        else:
-            cols.append("")
-    err, field_ords = dupeOrEmptyWithOrds(self.note)
-    if err == 2:
-        for i in field_ords:
-            if use_color_code:
-                cols[i] = "#fcc"
-            else:
-                cols[i] = "dupe"
-        self.web.eval("showDupes();")
-    else:
-        self.web.eval("hideDupes();")
-    self.web.eval("setBackgrounds(%s);" % json.dumps(cols))
-
-
 def dupeOrEmpty(self):
     """
     Returns 1 if first is empty; 2 if first is a duplicate, False otherwise.
@@ -194,15 +167,23 @@ def get_primary_key_field_orders(self) -> list:
         if fld["ord"] == 0:
             continue
         elif fld["name"].endswith(KEY_SUFFIX):
-            field_ords.append(fld["ord"])
+            field_ords.append((fld["name"], fld["ord"]))
 
     return field_ords
 
 def is_duplicate(self, _old) -> tuple:
-    # print(self.fields)
-    field_ords = get_primary_key_field_orders(self)
+    primary_key_cols = get_primary_key_field_orders(self)
+    orders = []
 
-    return _old(self), field_ords
+    for col in primary_key_cols:
+        name, order = col
+        if not self.fields[order].strip():
+            continue
+        val = self.fields[order]
+        if len(self.col.find_cards("%s:%s" % (name, val))) != 0:
+            orders.append(order)
+
+    return _old(self), orders
 
 def setup():
     print("Setting up dupe checking")

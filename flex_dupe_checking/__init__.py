@@ -15,9 +15,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import json
-
 import aqt
-from anki import version as anki_version
+
+from aqt import mw
 from anki.hooks import wrap
 from anki.notes import Note, NoteFieldsCheckResult
 from anki.utils import field_checksum, strip_html_media, split_fields
@@ -27,46 +27,9 @@ from aqt.utils import tr
 
 # When this is appended to the names of fields, then those fields are considered along with the
 # first field when checking for duplicates in the editor.
-KEY_SUFFIX = "_pk"
 
-def showDupes(self):
-    """
-    Shows the duplicates for the current note in the editor by conducting a search in the browser.
-
-    This basically performs the normal dupes search that Anki does but appends additional search
-    terms for other keys that have the _pk suffix.
-    """
-    print("Show dupes")
-    contents = strip_html_media(self.note.fields[0])
-    browser = aqt.dialogs.open("Browser", self.mw)
-
-    model = self.note.model()
-
-    # Find other notes with the same content for the first field.
-    search_cmds = [
-        '"dupe:%s,%s"' % (model['id'], contents)
-    ]
-
-    # If any other field names end in the special suffix, then they are considered part of the "key"
-    # that uniquely identifies a note.  Search for notes that have the same content for these fields,
-    # in addition to having the first field match.
-    for fld in model["flds"]:
-        # First field is already filtered on by the dupe check.
-        if fld["ord"] == 0:
-            continue
-        elif fld["name"].endswith(KEY_SUFFIX):
-            term = strip_html_media(self.note.fields[fld["ord"]])
-            cmd_args = (fld["name"], term)
-            if '"' in term and "'" in term:
-                # ignore, unfortunately we can't search for it
-                pass
-            elif '"' in term:
-                search_cmds.append("%s:'%s'" % cmd_args)
-            else:
-                search_cmds.append("%s:\"%s\"" % cmd_args)
-
-    browser.form.searchEdit.lineEdit().setText(" ".join(search_cmds))
-    browser.onSearchActivated()
+config = mw.addonManager.getConfig(__name__)
+KEYS = config['field_names']
 
 def update_duplicate_display(self, first_field_result, duplicate_fields) -> None:
     cols = [""] * len(self.note.fields)
@@ -113,7 +76,7 @@ def get_primary_key_field_orders(self) -> list:
     for fld in note_type["flds"]:
         if fld["ord"] == 0:
             continue
-        elif fld["name"].endswith(KEY_SUFFIX):
+        elif fld["name"] in KEYS:
             field_ords.append(fld["ord"])
 
     return field_ords

@@ -105,8 +105,6 @@ def dupeOrEmpty(self):
     Returns 1 if first is empty; 2 if first is a duplicate, False otherwise.
     """
     res, field_ords = dupeOrEmptyWithOrds(self)
-    print(res)
-
     return res
 
 
@@ -149,19 +147,20 @@ def showDupes(self):
     browser.form.searchEdit.lineEdit().setText(" ".join(search_cmds))
     browser.onSearchActivated()
 
-def update_duplicate_display(self, result: NoteFieldsCheckResult) -> None:
-    print("Updating duplicate display")
+def update_duplicate_display(self, duplicate_fields) -> None:
+    print(duplicate_fields)
 
 def check_duplicate(self, _old) -> None:
     note = self.note
     if not note:
         return
 
-    def on_done(result: NoteFieldsCheckResult) -> None:
+    def on_done(result: tuple) -> None:
+        first_note_field_result, duplicate_fields = result
         if self.note != note:
             return
-        self._update_duplicate_display(result)
-        update_duplicate_display(self, result)
+        self._update_duplicate_display(first_note_field_result)
+        update_duplicate_display(self, duplicate_fields)
 
     QueryOp(
         parent=self.parentWindow,
@@ -182,14 +181,13 @@ def get_primary_key_field_orders(self) -> list:
 
     return field_ords
 
-def is_duplicate(self, _old) -> None:
+def is_duplicate(self, _old) -> tuple:
     # print(self.fields)
     note_type = self.note_type()
 
     field_ords = get_primary_key_field_orders(self)
-    print(field_ords)
 
-    return _old(self)
+    return _old(self), field_ords
 
 def setup():
     print("Setting up dupe checking")

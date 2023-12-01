@@ -172,6 +172,7 @@ def get_primary_key_field_orders(self) -> list:
     return field_ords
 
 def is_duplicate(self, _old) -> tuple:
+    nid = self.id
     primary_key_cols = get_primary_key_field_orders(self)
     orders = []
 
@@ -180,7 +181,7 @@ def is_duplicate(self, _old) -> tuple:
         if not self.fields[order].strip():
             continue
         val = self.fields[order]
-        if len(self.col.find_cards("%s:%s" % (name, val))) != 0:
+        if len(self.col.find_cards("%s:\"%s\" -nid:%s" % (name, val, nid))) != 0:
             orders.append(order)
 
     return _old(self), orders

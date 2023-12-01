@@ -23,6 +23,7 @@ from anki.notes import Note, NoteFieldsCheckResult
 from anki.utils import field_checksum, strip_html_media, split_fields
 from aqt.editor import Editor
 from aqt.operations import QueryOp
+from aqt.utils import tr
 
 # When this is appended to the names of fields, then those fields are considered along with the
 # first field when checking for duplicates in the editor.
@@ -147,8 +148,25 @@ def showDupes(self):
     browser.form.searchEdit.lineEdit().setText(" ".join(search_cmds))
     browser.onSearchActivated()
 
-def update_duplicate_display(self, duplicate_fields) -> None:
-    print(duplicate_fields)
+def update_duplicate_display(self, first_field_result, duplicate_fields) -> None:
+    cols = [""] * len(self.note.fields)
+    cloze_hint = ""
+    if first_field_result == NoteFieldsCheckResult.DUPLICATE:
+        cols[0] = "dupe"
+    elif first_field_result == NoteFieldsCheckResult.NOTETYPE_NOT_CLOZE:
+        cloze_hint = tr.adding_cloze_outside_cloze_notetype()
+    elif first_field_result == NoteFieldsCheckResult.FIELD_NOT_CLOZE:
+        cloze_hint = tr.adding_cloze_outside_cloze_field()
+
+    for field_ord in duplicate_fields:
+        cols[field_ord] = "dupe"
+
+    self.web.eval(
+        'require("anki/ui").loaded.then(() => {'
+        f"setBackgrounds({json.dumps(cols)});\n"
+        f"setClozeHint({json.dumps(cloze_hint)});\n"
+        "}); "
+    )
 
 def check_duplicate(self, _old) -> None:
     note = self.note
@@ -156,11 +174,10 @@ def check_duplicate(self, _old) -> None:
         return
 
     def on_done(result: tuple) -> None:
-        first_note_field_result, duplicate_fields = result
+        first_field_result, duplicate_fields = result
         if self.note != note:
             return
-        self._update_duplicate_display(first_note_field_result)
-        update_duplicate_display(self, duplicate_fields)
+        update_duplicate_display(self, first_field_result, duplicate_fields)
 
     QueryOp(
         parent=self.parentWindow,
@@ -183,8 +200,6 @@ def get_primary_key_field_orders(self) -> list:
 
 def is_duplicate(self, _old) -> tuple:
     # print(self.fields)
-    note_type = self.note_type()
-
     field_ords = get_primary_key_field_orders(self)
 
     return _old(self), field_ords

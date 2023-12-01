@@ -181,10 +181,11 @@ def is_duplicate(self, _old) -> tuple:
         if not self.fields[order].strip():
             continue
         val = self.fields[order]
-        test = self.col.db.list("select flds from notes where flds LIKE ? and id != ?", "%" + val + "%", self.id or 0)
-        print(test)
-        if len(self.col.find_cards("%s:\"%s\" -nid:%s" % (name, val, nid))) != 0:
-            orders.append(order)
+        for fields in self.col.db.list("select flds from notes where flds LIKE ? and id != ?", "%" + val + "%", self.id or 0):
+            for field in split_fields(fields):
+                test = strip_html_media(field)
+                if field_checksum(test) == field_checksum(val):
+                    orders.append(order)
 
     return _old(self), orders
 

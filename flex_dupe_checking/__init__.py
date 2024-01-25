@@ -80,10 +80,9 @@ def get_primary_key_field_orders(self) -> list:
 
     return field_ords
 
-def is_duplicate(self, _old) -> tuple:
+def create_search_query(self) -> str:
     nid = self.id
     primary_key_cols = get_primary_key_field_orders(self)
-    orders = []
     queries = []
 
     for order in primary_key_cols:
@@ -93,9 +92,16 @@ def is_duplicate(self, _old) -> tuple:
         for name in KEYS:
             queries.append("\"%s:%s\"" % (name, val))
 
-    if len(queries) != 0:
-        for order in primary_key_cols:
-            if len(self.col.find_cards("-nid:%s (%s)" % (nid, " OR ".join(queries)))) != 0:
+    return "-nid:%s (%s)" % (nid, " OR ".join(queries)) if len(queries) != 0 else ""
+
+def is_duplicate(self, _old) -> tuple:
+    cols = get_primary_key_field_orders(self)
+    orders = []
+
+    query = create_search_query(self)
+    if query != "":
+        for order in cols:
+            if len(self.col.find_cards(create_search_query(self))) != 0:
                 orders.append(order)
 
     return _old(self), orders
@@ -106,18 +112,7 @@ def show_dupes(self, _old) -> None:
     if not note:
         return
 
-    nid = note.id
-    primary_key_cols = get_primary_key_field_orders(note)
-    queries = []
-
-    for order in primary_key_cols:
-        if not note.fields[order].strip():
-            continue
-        val = note.fields[order]
-        for name in KEYS:
-            queries.append("\"%s:%s\"" % (name, val))
-
-    query = "-nid:%s (%s)" % (nid, " OR ".join(queries))
+    query = create_search_query(note)
 
     browser = aqt.dialogs.open("Browser", self.mw)
     browser.form.searchEdit.lineEdit().setText(query)

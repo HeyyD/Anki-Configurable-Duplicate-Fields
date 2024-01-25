@@ -106,10 +106,22 @@ def show_dupes(self, _old) -> None:
     if not note:
         return
 
-    note_type = note.note_type()
-    print(note_type)
+    nid = note.id
+    primary_key_cols = get_primary_key_field_orders(note)
+    queries = []
 
-    _old(self)
+    for order in primary_key_cols:
+        if not note.fields[order].strip():
+            continue
+        val = note.fields[order]
+        for name in KEYS:
+            queries.append("\"%s:%s\"" % (name, val))
+
+    query = "-nid:%s (%s)" % (nid, " OR ".join(queries))
+
+    browser = aqt.dialogs.open("Browser", self.mw)
+    browser.form.searchEdit.lineEdit().setText(query)
+    browser.onSearchActivated()
 
 def setup():
     print("Setting up duplicate checking...")

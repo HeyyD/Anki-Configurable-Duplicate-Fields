@@ -24,6 +24,7 @@ from anki.utils import field_checksum, strip_html_media, split_fields
 from aqt.editor import Editor
 from aqt.operations import QueryOp
 from aqt.utils import tr
+from anki.collection import SearchNode
 
 # When this is appended to the names of fields, then those fields are considered along with the
 # first field when checking for duplicates in the editor.
@@ -74,32 +75,45 @@ def get_primary_key_field_orders(self) -> list:
 
     field_ords = []
     for fld in note_type["flds"]:
-        if fld["ord"] == 0:
-            continue
-        elif fld["name"] in KEYS:
+        if fld["name"] in KEYS:
             field_ords.append(fld["ord"])
 
     return field_ords
 
 def is_duplicate(self, _old) -> tuple:
+    nid = self.id
     primary_key_cols = get_primary_key_field_orders(self)
-    columns = []
+    orders = []
+    queries = []
 
     for order in primary_key_cols:
         if not self.fields[order].strip():
             continue
         val = self.fields[order]
-        for fields in self.col.db.list("select flds from notes where flds LIKE ? and id != ?", "%" + val + "%", self.id or 0):
-            for field in split_fields(fields):
-                normalized = strip_html_media(field)
-                if field_checksum(normalized) == field_checksum(val):
-                    columns.append(order)
+        for name in KEYS:
+            queries.append("\"%s:%s\"" % (name, val))
 
-    return _old(self), columns
+    if len(queries) != 0:
+        for order in primary_key_cols:
+            if len(self.col.find_cards("-nid:%s (%s)" % (nid, " OR ".join(queries)))) != 0:
+                orders.append(order)
+
+    return _old(self), orders
+
+
+def show_dupes(self, _old) -> None:
+    note = self.note
+    if not note:
+        return
+
+    note_type = note.note_type()
+    print(note_type)
+
+    _old(self)
 
 def setup():
     print("Setting up duplicate checking...")
     Editor._check_and_update_duplicate_display_async = wrap(Editor._check_and_update_duplicate_display_async, check_duplicate, "around")
     Note.fields_check = wrap(Note.fields_check, is_duplicate, "around")
-    # Editor.showDupes = showDupes
+    Editor.showDupes = wrap(Editor.showDupes, show_dupes, "around")
     # Editor._links["dupes"] = showDupes

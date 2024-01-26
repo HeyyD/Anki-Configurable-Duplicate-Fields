@@ -92,7 +92,7 @@ def create_search_query(self) -> str:
         for name in KEYS:
             queries.append("\"%s:%s\"" % (name, val))
 
-    return "-nid:%s (%s)" % (nid, " OR ".join(queries)) if len(queries) != 0 else ""
+    return "%s(%s)" % ("-nid:%s " % nid if nid != 0 else "", " OR ".join(queries)) if len(queries) != 0 else ""
 
 def is_duplicate(self, _old) -> tuple:
     cols = get_primary_key_field_orders(self)

@@ -112,7 +112,16 @@ def show_dupes(self, _old) -> None:
     if not note:
         return
 
-    query = create_search_query(note)
+    first_field_result, duplicate_fields = note.fields_check()
+    query = ""
+
+    if first_field_result == NoteFieldsCheckResult.DUPLICATE and len(duplicate_fields) == 0:
+        _old(self)
+        return
+    elif first_field_result == NoteFieldsCheckResult.DUPLICATE and len(duplicate_fields) != 0:
+        query = "dupe:%s,%s OR (%s)" % (note.note_type()["id"], note.fields[0], create_search_query(note))
+    else:
+        query = create_search_query(note)
 
     browser = aqt.dialogs.open("Browser", self.mw)
     browser.form.searchEdit.lineEdit().setText(query)
@@ -123,4 +132,3 @@ def setup():
     Editor._check_and_update_duplicate_display_async = wrap(Editor._check_and_update_duplicate_display_async, check_duplicate, "around")
     Note.fields_check = wrap(Note.fields_check, is_duplicate, "around")
     Editor.showDupes = wrap(Editor.showDupes, show_dupes, "around")
-    # Editor._links["dupes"] = showDupes

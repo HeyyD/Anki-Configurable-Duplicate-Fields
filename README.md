@@ -10,7 +10,7 @@ Fields to be checked can be set in the add-on's config view in *Tools > Add-ons 
   ]
 }
 ```
-Replace `example_field` wwith the field name you want to check duplicates for. You can add multiple fields separated by commas to check
+Replace `example_field` with the field name you want to check duplicates for. You can add multiple fields separated by commas to check
 duplicates for multiple fields. This way, duplicates can be compared between multiple decks, i.e., if *Vocabulary-Kanji* in deck A has
 same value as *target word* in deck B, duplicate will be shown.
 

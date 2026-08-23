@@ -22,16 +22,19 @@ There is no test suite; pytest is listed in requirements but unused. Verificatio
 
 ## Architecture Notes
 
+Anki desktop internals reference: https://github.com/ankitects/anki (`qt/aqt/...`; `_aqt/hooks.py` is build-generated and not in the repo). Desktop installs ship `.pyc`-only bytecode for `aqt`/`_aqt` — class/method names, `co_varnames`, and embedded type strings can be dumped with `marshal` from the local installation when behavior needs verifying.
+
 The add-on works by wrapping (monkey-patching) Anki internals with `anki.hooks.wrap(..., "around")` in `setup()`:
 
 - `Editor._check_and_update_duplicate_display_async` → `check_duplicate` — re-runs duplicate detection asynchronously via `QueryOp` and highlights configured fields in the editor web view (`setBackgrounds`)
 - `Note.fields_check` → `is_duplicate` — appends ordinals of duplicate-configured fields to Anki's normal result tuple
 - `Editor.showDupes` → `show_dupes` — opens the browser with a search query combining Anki's native dupe search (`dupe:<notetype-id>,<first-field>`) and custom queries built as `"fieldname:value"` per configured field
 
-Tools menu → "Configurable Duplicate Fields" submenu with two actions:
+Tools menu → "Configurable Duplicate Fields" submenu containing only:
 
-- "Configure..." → `FieldNamesDialog` — GUI editor for the field list plus an *Exclude current note from duplicate search results* checkbox; saves via `mw.addonManager.writeConfig` (through `save_config`) and refreshes the in-memory cache so changes apply without restarting Anki
-- "Find Duplicates..." → `open_find_duplicates_dialog` — scans the whole collection (`col.db.execute("select id, mid, flds from notes")`) inside a background `QueryOp`, groups notes by value checksum across ALL configured field names (so differently named fields with equal values group together, matching the editor-side `"name:value"` OR-query semantics), and shows groups with > 1 note in `DuplicateReportDialog`; clicking a group opens the Browser with a `nid:` query
+- "Config..." → `FieldNamesDialog` — GUI editor for the field list plus an *Exclude current note from duplicate search results* checkbox; saves via `mw.addonManager.writeConfig` (through `save_config`) and refreshes the in-memory cache so changes apply without restarting Anki
+
+Browser window Notes menu → "(Configured Duplicates) Find duplicates..." → `open_find_duplicates_dialog`, inserted directly below Anki's native "Find Duplicates" entry (`_install_browser_menu_action` registers `_add_find_duplicates_menu_action` on the official `gui_hooks.browser_menus_did_init` hook — current releases pass only `(browser)`, older ones `(menu, browser)`, so the callback takes `*args` and reads the browser from the last arg; the menu is resolved as `browser.form.menu_Notes` with legacy `menuNotes` fallback, and positioning uses `browser.form.actionFindDuplicates`, then text matching, then appends at the end; if the hook itself is unavailable, the action is added to the Tools submenu instead). The dialog and its `QueryOp` are parented to the Browser window (not `mw`) so the main window is not raised, and it is shown non-modally (`show()` with a reference kept on the parent). It scans the whole collection (`col.db.execute("select id, mid, flds from notes")`) inside a background `QueryOp`, groups notes by value checksum across ALL configured field names (so differently named fields with equal values group together, matching the editor-side `"name:value"` OR-query semantics), and shows groups with > 1 note in `DuplicateReportDialog`; clicking a group — or the *Open All in Browser* button for every group's notes at once — opens the Browser with a `nid:` query.
 
 Key behaviors to preserve when editing:
 

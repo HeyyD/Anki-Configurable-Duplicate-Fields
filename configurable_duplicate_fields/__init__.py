@@ -2,7 +2,7 @@ import html
 import json
 import aqt
 
-from aqt import mw
+from aqt import mw, gui_hooks
 from anki.hooks import wrap
 from anki.notes import Note, NoteFieldsCheckResult
 from anki.utils import field_checksum, split_fields, strip_html_media
@@ -113,9 +113,10 @@ def on_config_updated(_new_config) -> None:
 
 
 class DuplicateReportDialog(QDialog):
-    def __init__(self, duplicate_groups, scanned_note_count):
-        super().__init__(mw)
-        self.setWindowTitle("Configurable Duplicate Fields")
+    def __init__(self, duplicate_groups, scanned_note_count, parent=None):
+        super().__init__(parent or mw)
+        self.setWindowTitle("(Configured Duplicates) Find Duplicates")
+        self.duplicate_groups = duplicate_groups
         layout = QVBoxLayout(self)
 
         if duplicate_groups:
@@ -132,6 +133,10 @@ class DuplicateReportDialog(QDialog):
         layout.addWidget(self.report_view)
 
         button_layout = QHBoxLayout()
+        open_all_button = QPushButton("Open All in Browser", self)
+        open_all_button.setEnabled(bool(duplicate_groups))
+        open_all_button.clicked.connect(self.open_all_in_browser)
+        button_layout.addWidget(open_all_button)
         button_layout.addStretch()
         close_button = QPushButton("Close", self)
         close_button.clicked.connect(self.reject)
@@ -155,7 +160,23 @@ class DuplicateReportDialog(QDialog):
         fragment = url.fragment()
         if not fragment:
             return
-        query = " OR ".join("nid:%s" % part for part in fragment.split(","))
+        self.open_search_in_browser(self._nids_search_query(fragment.split(",")))
+
+    def open_all_in_browser(self) -> None:
+        nids = [nid for group in self.duplicate_groups for nid in group["nids"]]
+        if nids:
+            self.open_search_in_browser(self._nids_search_query(nids))
+
+    @staticmethod
+    def _nids_search_query(nids) -> str:
+        nids = [str(nid) for nid in nids]
+        if len(nids) <= 1000:
+            return "nid:" + ",".join(nids)
+        chunks = (nids[index:index + 1000] for index in range(0, len(nids), 1000))
+        return " or ".join("nid:" + ",".join(chunk) for chunk in chunks)
+
+    @staticmethod
+    def open_search_in_browser(query) -> None:
         browser = aqt.dialogs.open("Browser", mw)
         browser.form.searchEdit.lineEdit().setText(query)
         browser.onSearchActivated()
@@ -206,12 +227,75 @@ def find_duplicate_groups(col) -> tuple:
     return duplicate_groups, scanned_note_count
 
 
-def open_find_duplicates_dialog() -> None:
+def open_find_duplicates_dialog(parent=None) -> None:
+    parent = parent or mw
+
     def on_done(result: tuple) -> None:
         duplicate_groups, scanned_note_count = result
-        DuplicateReportDialog(duplicate_groups, scanned_note_count).exec()
+        dialog = DuplicateReportDialog(duplicate_groups, scanned_note_count, parent)
+        parent._configurable_dupes_report_dialog = dialog
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
 
-    QueryOp(parent=mw, op=lambda col: find_duplicate_groups(col), success=on_done).run_in_background()
+    QueryOp(
+        parent=parent,
+        op=lambda col: find_duplicate_groups(col),
+        success=on_done,
+    ).run_in_background()
+
+
+BROWSER_FIND_DUPLICATES_LABEL = "(Configured Duplicates) Find &duplicates..."
+
+
+def _install_browser_menu_action() -> bool:
+    try:
+        gui_hooks.browser_menus_did_init.append(_add_find_duplicates_menu_action)
+    except (AttributeError, TypeError):
+        print("Configurable Duplicate Fields: could not hook the Browser window; "
+              "keeping Find Duplicates in the Tools menu.")
+        return False
+    return True
+
+
+def _add_find_duplicates_menu_action(*args) -> None:
+    if not args:
+        return
+    browser = args[-1]
+    form = getattr(browser, "form", None)
+    notes_menu = getattr(form, "menu_Notes", None)
+    if notes_menu is None:
+        notes_menu = getattr(form, "menuNotes", None)
+    if notes_menu is None:
+        return
+
+    action = QAction(BROWSER_FIND_DUPLICATES_LABEL, browser)
+    action.setToolTip("Find duplicates across all configured duplicate-check fields.")
+    action.triggered.connect(lambda checked=False, parent=browser: open_find_duplicates_dialog(parent))
+
+    vanilla_action = getattr(form, "actionFindDuplicates", None)
+    if vanilla_action is None:
+        vanilla_action = _find_vanilla_find_duplicates_action(notes_menu)
+
+    if vanilla_action is None:
+        notes_menu.addAction(action)
+        return
+
+    menu_actions = notes_menu.actions()
+    position = menu_actions.index(vanilla_action)
+    following_action = menu_actions[position + 1] if position + 1 < len(menu_actions) else None
+    if following_action is None:
+        notes_menu.addAction(action)
+    else:
+        notes_menu.insertAction(following_action, action)
+
+
+def _find_vanilla_find_duplicates_action(notes_menu):
+    for action in notes_menu.actions():
+        text = str(action.text() or "").replace("&", "").strip().lower()
+        if "find duplicates" in text or text == "finddupes":
+            return action
+    return None
 
 
 def update_duplicate_display(self, first_field_result, duplicate_fields) -> None:
@@ -329,16 +413,16 @@ def setup():
 
     load_config()
 
-    menu = QMenu("&Configurable Duplicate Fields", mw)
+    tools_menu = QMenu("&Configurable Duplicate Fields", mw)
 
-    configure_action = QAction("Configure...", mw)
+    configure_action = QAction("&Config...", mw)
     configure_action.triggered.connect(open_config_dialog)
-    menu.addAction(configure_action)
+    tools_menu.addAction(configure_action)
+    mw.form.menuTools.addMenu(tools_menu)
 
-    find_duplicates_action = QAction("Find Duplicates...", mw)
-    find_duplicates_action.triggered.connect(open_find_duplicates_dialog)
-    menu.addAction(find_duplicates_action)
-
-    mw.form.menuTools.addMenu(menu)
+    if not _install_browser_menu_action():
+        find_duplicates_action = QAction(BROWSER_FIND_DUPLICATES_LABEL, mw)
+        find_duplicates_action.triggered.connect(open_find_duplicates_dialog)
+        tools_menu.addAction(find_duplicates_action)
 
     mw.addonManager.setConfigUpdatedAction(__name__, on_config_updated)

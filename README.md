@@ -2,7 +2,7 @@
 
 This modifies Anki's duplicate checking in the editor so that additional fields can be used to check duplicates.
 
-Fields to be checked can be set in *Tools > Configurable Duplicate Fields > Configure...* (one field name per line).
+Fields to be checked can be set in *Tools > Configurable Duplicate Fields > Config...* (one field name per line).
 Changes are saved to the add-on config and take effect immediately — no restart needed. The same settings can also be
 edited by hand via the add-on's JSON config (*Tools > Add-ons > Configurable duplicate fields > Config*):
 
@@ -35,11 +35,12 @@ If you prefer to see the original note next to its duplicates so you can compare
 
 ## Find Duplicates across your collection
 
-*Tools > Configurable Duplicate Fields > Find Duplicates...* scans the whole collection for notes that share the same
-value in any of the configured fields — including values stored under differently named fields (e.g. *Vocabulary-Kanji*
-matching *target word*). This is similar to Anki's built-in *Notes > Find Duplicates*, but across all configured fields
-at once instead of one by one. Results are grouped by value and sorted by frequency; clicking a group opens it
-in the Browser so you can review the notes side by side.
+*Browse > Notes > (Configured Duplicates) Find duplicates...* — placed directly below Anki's built-in
+*Find Duplicates...* — scans the whole collection for notes that share the same value in any of the configured fields,
+including values stored under differently named fields (e.g. *Vocabulary-Kanji* matching *target word*). Unlike the
+built-in search, it checks all configured fields at once instead of one by one. Results are grouped by value and sorted
+by frequency; the report stays open next to the Browser, and clicking a group (or *Open All in Browser*) shows the notes
+there so you can review them side by side.
 
 ## Why?
 

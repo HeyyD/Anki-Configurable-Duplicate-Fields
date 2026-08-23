@@ -27,10 +27,11 @@ The add-on has no UI of its own; it works by wrapping (monkey-patching) Anki int
 - `Editor._check_and_update_duplicate_display_async` → `check_duplicate` — re-runs duplicate detection asynchronously via `QueryOp` and highlights configured fields in the editor web view (`setBackgrounds`)
 - `Note.fields_check` → `is_duplicate` — appends ordinals of duplicate-configured fields to Anki's normal result tuple
 - `Editor.showDupes` → `show_dupes` — opens the browser with a search query combining Anki's native dupe search (`dupe:<notetype-id>,<first-field>`) and custom queries built as `"fieldname:value"` per configured field
+- Tools menu → "Configurable Duplicate Fields..." → `FieldNamesDialog` — GUI editor for the field list; saves via `mw.addonManager.writeConfig` and updates the in-memory cache (`save_field_names`) so changes apply without restarting Anki
 
 Key behaviors to preserve when editing:
 
-- Field names come from `config['field_names']`; config is read **once at module import** (`mw.addonManager.getConfig(__name__)`), so changes require an Anki restart. Do not assume hot-reload.
+- Field names come from `config['field_names']`; they are cached at startup (`load_field_names`) and read through `get_field_names()` everywhere. Never cache them in a module-level constant again, or hot-reload (dialog save and `setConfigUpdatedAction` callback) breaks.
 - Fields are matched by name against all notetypes (`get_primary_key_field_orders` maps names to field ordinals); empty fields are skipped when building search queries.
 - Wrapped functions receive `_old` and must call/return through it (around-wrap convention); results are tuples `(first_field_result, duplicate_field_ords)`.
 - Search strings are quoted with embedded double quotes (`"field:value"`) — be careful with escaping.

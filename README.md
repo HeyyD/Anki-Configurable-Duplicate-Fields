@@ -1,7 +1,11 @@
 # Configurable duplicate fields
 
 This modifies Anki's duplicate checking in the editor so that additional fields can be used to check duplicates.
-Fields to be checked can be set in the add-on's config view in *Tools > Add-ons > Configurable duplicate fields > Config*.
+Fields to be checked can be set in *Tools > Configurable Duplicate Fields...* (one field name per line). Changes are
+saved to the add-on config and take effect immediately — no restart needed.
+
+The same settings can also be edited by hand via the add-on's JSON config (*Tools > Add-ons >
+Configurable duplicate fields > Config*):
 
 ``` json
 {
@@ -10,9 +14,9 @@ Fields to be checked can be set in the add-on's config view in *Tools > Add-ons 
   ]
 }
 ```
-Replace `example_field` with the field name you want to check duplicates for. You can add multiple fields separated by commas to check
-duplicates for multiple fields. This way, duplicates can be compared between multiple decks, i.e., if *Vocabulary-Kanji* in deck A has
-same value as *target word* in deck B, duplicate will be shown.
+Replace `example_field` with the field name you want to check duplicates for. You can add multiple fields to check
+duplicates for multiple fields. This way, duplicates can be compared between multiple decks, i.e., if *Vocabulary-Kanji*
+in deck A has same value as *target word* in deck B, duplicate will be shown.
 
 ``` json
 {
@@ -22,8 +26,6 @@ same value as *target word* in deck B, duplicate will be shown.
   ]
 }
 ```
-
-After configuring the fields, remember to restart Anki.
 
 ## Why?
 

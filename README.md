@@ -1,17 +1,17 @@
 # Configurable duplicate fields
 
 This modifies Anki's duplicate checking in the editor so that additional fields can be used to check duplicates.
-Fields to be checked can be set in *Tools > Configurable Duplicate Fields...* (one field name per line). Changes are
-saved to the add-on config and take effect immediately — no restart needed.
 
-The same settings can also be edited by hand via the add-on's JSON config (*Tools > Add-ons >
-Configurable duplicate fields > Config*):
+Fields to be checked can be set in *Tools > Configurable Duplicate Fields > Configure...* (one field name per line).
+Changes are saved to the add-on config and take effect immediately — no restart needed. The same settings can also be
+edited by hand via the add-on's JSON config (*Tools > Add-ons > Configurable duplicate fields > Config*):
 
 ``` json
 {
   "field_names": [
     "example_field"
-  ]
+  ],
+  "exclude_own_note": true
 }
 ```
 Replace `example_field` with the field name you want to check duplicates for. You can add multiple fields to check
@@ -26,6 +26,20 @@ in deck A has same value as *target word* in deck B, duplicate will be shown.
   ]
 }
 ```
+
+### Exclude current note
+
+By default, duplicate searches exclude the note being edited (`exclude_own_note: true`), matching Anki's own behavior.
+If you prefer to see the original note next to its duplicates so you can compare them directly, untick
+*Exclude current note from duplicate search results* in the configuration window (or set `exclude_own_note` to `false`).
+
+## Find Duplicates across your collection
+
+*Tools > Configurable Duplicate Fields > Find Duplicates...* scans the whole collection for notes that share the same
+value in any of the configured fields — including values stored under differently named fields (e.g. *Vocabulary-Kanji*
+matching *target word*). This is similar to Anki's built-in *Notes > Find Duplicates*, but across all configured fields
+at once instead of one by one. Results are grouped by value and sorted by frequency; clicking a group opens it
+in the Browser so you can review the notes side by side.
 
 ## Why?
 

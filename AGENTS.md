@@ -16,22 +16,27 @@ There is no test suite; pytest is listed in requirements but unused. Verificatio
 
 - `__init__.py` — add-on entry point; imports `setup()` from the package and calls it
 - `manifest.json` — Anki manifest (`package: configurable_duplicate_fields`)
-- `config.json` — default user-facing config: `{ "field_names": [...] }`
+- `config.json` — default user-facing config: `{ "field_names": [...], "exclude_own_note": true }`
 - `configurable_duplicate_fields/__init__.py` — all logic lives in this single module
 - `release.sh` — build script; copies `__init__.py`, `manifest.json`, and `configurable_duplicate_fields/__init__.py` into a zip
 
 ## Architecture Notes
 
-The add-on has no UI of its own; it works by wrapping (monkey-patching) Anki internals with `anki.hooks.wrap(..., "around")` in `setup()`:
+The add-on works by wrapping (monkey-patching) Anki internals with `anki.hooks.wrap(..., "around")` in `setup()`:
 
 - `Editor._check_and_update_duplicate_display_async` → `check_duplicate` — re-runs duplicate detection asynchronously via `QueryOp` and highlights configured fields in the editor web view (`setBackgrounds`)
 - `Note.fields_check` → `is_duplicate` — appends ordinals of duplicate-configured fields to Anki's normal result tuple
 - `Editor.showDupes` → `show_dupes` — opens the browser with a search query combining Anki's native dupe search (`dupe:<notetype-id>,<first-field>`) and custom queries built as `"fieldname:value"` per configured field
-- Tools menu → "Configurable Duplicate Fields..." → `FieldNamesDialog` — GUI editor for the field list; saves via `mw.addonManager.writeConfig` and updates the in-memory cache (`save_field_names`) so changes apply without restarting Anki
+
+Tools menu → "Configurable Duplicate Fields" submenu with two actions:
+
+- "Configure..." → `FieldNamesDialog` — GUI editor for the field list plus an *Exclude current note from duplicate search results* checkbox; saves via `mw.addonManager.writeConfig` (through `save_config`) and refreshes the in-memory cache so changes apply without restarting Anki
+- "Find Duplicates..." → `open_find_duplicates_dialog` — scans the whole collection (`col.db.execute("select id, mid, flds from notes")`) inside a background `QueryOp`, groups notes by value checksum across ALL configured field names (so differently named fields with equal values group together, matching the editor-side `"name:value"` OR-query semantics), and shows groups with > 1 note in `DuplicateReportDialog`; clicking a group opens the Browser with a `nid:` query
 
 Key behaviors to preserve when editing:
 
-- Field names come from `config['field_names']`; they are cached at startup (`load_field_names`) and read through `get_field_names()` everywhere. Never cache them in a module-level constant again, or hot-reload (dialog save and `setConfigUpdatedAction` callback) breaks.
+- Config comes from `{field_names, exclude_own_note}`; the raw config dict is cached at startup (`load_config`) and read through `get_field_names()` / `get_exclude_own_note()` everywhere. Never cache values in a module-level constant again, or hot-reload (dialog save and `setConfigUpdatedAction` callback) breaks.
+- `create_search_query(self, exclude_own_note=True)` prepends `-nid:<id>` to exclude the note being edited. `is_duplicate` must always exclude it (default), otherwise every field matches its own note and everything is flagged as a dupe. Only `show_dupes` passes the user setting.
 - Fields are matched by name against all notetypes (`get_primary_key_field_orders` maps names to field ordinals); empty fields are skipped when building search queries.
 - Wrapped functions receive `_old` and must call/return through it (around-wrap convention); results are tuples `(first_field_result, duplicate_field_ords)`.
 - Search strings are quoted with embedded double quotes (`"field:value"`) — be careful with escaping.

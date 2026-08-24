@@ -38,9 +38,10 @@ If you prefer to see the original note next to its duplicates so you can compare
 *Browse > Notes > (Configured Duplicates) Find duplicates...* — placed directly below Anki's built-in
 *Find Duplicates...* — scans the whole collection for notes that share the same value in any of the configured fields,
 including values stored under differently named fields (e.g. *Vocabulary-Kanji* matching *target word*). Unlike the
-built-in search, it checks all configured fields at once instead of one by one. Results are grouped by value and sorted
-by frequency; the report stays open next to the Browser, and clicking a group (or *Open All in Browser*) shows the notes
-there so you can review them side by side.
+built-in search, it checks all configured fields at once instead of one by one. An optional filter field (same search
+syntax as the Browser, like Anki's own *Find Duplicates* filter) limits the scan to matching notes — press *Search* or
+Enter to re-run. Results are grouped by value and sorted by frequency; the report stays open next to the Browser, and
+clicking a group (or *Open All in Browser*) shows the notes there so you can review them side by side.
 
 ## Why?
 

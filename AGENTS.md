@@ -17,8 +17,10 @@ There is no test suite; pytest is listed in requirements but unused. Verificatio
 - `__init__.py` — add-on entry point; imports `setup()` from the package and calls it
 - `manifest.json` — Anki manifest (`package: configurable_duplicate_fields`)
 - `config.json` — default user-facing config: `{ "field_names": [...], "exclude_own_note": true }`
-- `configurable_duplicate_fields/__init__.py` — all logic lives in this single module
-- `release.sh` — build script; copies `__init__.py`, `manifest.json`, and `configurable_duplicate_fields/__init__.py` into a zip
+- `configurable_duplicate_fields/__init__.py` — editor-side duplicate checking (`check_duplicate`, `is_duplicate`, `show_dupes`) and `setup()`
+- `configurable_duplicate_fields/config.py` — config cache (`load_config` / `save_config` / `get_field_names` / `get_exclude_own_note`), its keys, and the Tools-menu config dialog (`FieldNamesDialog` / `open_config_dialog`)
+- `configurable_duplicate_fields/find_duplicates.py` — collection-wide duplicate scan: `DuplicateReportDialog` (optional search filter, Open All in Browser), `find_duplicate_groups`, and the Browser Notes-menu hook (`install_browser_menu_action`)
+- `release.sh` — build script; copies `__init__.py`, `manifest.json`, and the whole `configurable_duplicate_fields/` directory into a zip
 
 ## Architecture Notes
 

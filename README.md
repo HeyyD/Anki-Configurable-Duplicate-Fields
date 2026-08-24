@@ -1,31 +1,36 @@
 # Configurable duplicate fields
 
 This modifies Anki's duplicate checking in the editor so that additional fields can be used to check duplicates.
-Fields to be checked can be set in *Tools > Configurable Duplicate Fields...* (one field name per line). Changes are
-saved to the add-on config and take effect immediately — no restart needed.
 
-The same settings can also be edited by hand via the add-on's JSON config (*Tools > Add-ons >
-Configurable duplicate fields > Config*):
+![demo](media/demo.gif)
 
-``` json
-{
-  "field_names": [
-    "example_field"
-  ]
-}
-```
+Fields to be checked can be set in *Tools > Configurable Duplicate Fields > Config...* (one field name per line).
+Changes are saved to the add-on config and take effect immediately. No restart needed. The same settings can also be
+edited by hand via the add-on's JSON config (*Tools > Add-ons > Configurable duplicate fields > Config*):
+
 Replace `example_field` with the field name you want to check duplicates for. You can add multiple fields to check
 duplicates for multiple fields. This way, duplicates can be compared between multiple decks, i.e., if *Vocabulary-Kanji*
 in deck A has same value as *target word* in deck B, duplicate will be shown.
 
-``` json
-{
-  "field_names": [
-    "target word",
-    "Vocabulary-Kanji"
-  ]
-}
-```
+![config](media/config.gif)
+
+### Exclude current note
+
+By default, duplicate searches exclude the note being edited (`exclude_own_note: true`), matching Anki's own behavior.
+If you prefer to see the original note next to its duplicates so you can compare them directly, untick
+*Exclude current note from duplicate search results* in the configuration window (or set `exclude_own_note` to `false`).
+
+## Find Duplicates across your collection
+
+*Browse > Notes > (Configured Duplicates) Find duplicates...* separate menu from Anki's built-in
+*Find Duplicates...* scans the whole collection for notes that share the same value in any of the configured fields,
+including values stored under differently named fields (e.g. *Vocabulary-Kanji* matching *target word*). Unlike the
+built-in search, it checks all configured fields at once instead of one by one. An optional filter field (same search
+syntax as the Browser, like Anki's own *Find Duplicates* filter) limits the scan to matching notes. Press *Search* or
+Enter to re-run. Results are grouped by value and sorted by frequency; the report stays open next to the Browser, and
+clicking a group (or *Open All in Browser*) shows the notes there so you can review them side by side, add tags etc.
+
+![find-duplicates-panel](media/find-duplicates-panel.gif)
 
 ## Why?
 

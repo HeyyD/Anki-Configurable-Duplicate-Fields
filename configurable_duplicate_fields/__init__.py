@@ -1,4 +1,5 @@
 import json
+
 import aqt
 
 from aqt import mw
@@ -6,83 +7,24 @@ from anki.hooks import wrap
 from anki.notes import Note, NoteFieldsCheckResult
 from aqt.editor import Editor
 from aqt.operations import QueryOp
-from aqt.qt import QAction, QDialog, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QVBoxLayout
-from aqt.utils import showWarning, tooltip, tr
+from aqt.qt import QAction, QMenu
+from aqt.utils import tr
 
-# When this is appended to the names of fields, then those fields are considered along with the
-# first field when checking for duplicates in the editor.
-
-FIELD_NAMES_CONFIG_KEY = "field_names"
-
-_field_names = None
-
-
-def load_field_names() -> list:
-    global _field_names
-    config = mw.addonManager.getConfig(__name__) or {}
-    names = []
-    for raw_name in config.get(FIELD_NAMES_CONFIG_KEY, []):
-        name = str(raw_name).strip()
-        if name and name not in names:
-            names.append(name)
-    _field_names = names
-    return names
+from .config import (
+    get_exclude_own_note,
+    get_field_names,
+    load_config,
+    open_config_dialog,
+)
+from .find_duplicates import (
+    BROWSER_FIND_DUPLICATES_LABEL,
+    install_browser_menu_action,
+    open_find_duplicates_dialog,
+)
 
 
-def get_field_names() -> list:
-    if _field_names is None:
-        load_field_names()
-    return list(_field_names)
-
-
-def save_field_names(field_names) -> None:
-    global _field_names
-    names = []
-    for raw_name in field_names:
-        name = str(raw_name).strip()
-        if name and name not in names:
-            names.append(name)
-    mw.addonManager.writeConfig(__name__, {FIELD_NAMES_CONFIG_KEY: names})
-    _field_names = names
-
-
-class FieldNamesDialog(QDialog):
-    def __init__(self):
-        super().__init__(mw)
-        self.setWindowTitle("Configurable Duplicate Fields")
-        layout = QVBoxLayout(self)
-
-        layout.addWidget(QLabel("Field names to check for duplicates (one name per line):", self))
-        self.field_names_edit = QPlainTextEdit(self)
-        self.field_names_edit.setPlainText("\n".join(get_field_names()))
-        layout.addWidget(self.field_names_edit)
-
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-        save_button = QPushButton("Save", self)
-        save_button.clicked.connect(self.accept)
-        cancel_button = QPushButton("Cancel", self)
-        cancel_button.clicked.connect(self.reject)
-        button_layout.addWidget(save_button)
-        button_layout.addWidget(cancel_button)
-        layout.addLayout(button_layout)
-
-    def accept(self):
-        field_names = [line.strip() for line in self.field_names_edit.toPlainText().splitlines() if line.strip()]
-        if not field_names:
-            showWarning("Please enter at least one field name.", parent=self)
-            return
-        save_field_names(field_names)
-        tooltip("Configuration saved. Changes are active immediately.")
-        QDialog.accept(self)
-
-
-def open_config_dialog() -> None:
-    FieldNamesDialog().exec()
-
-
-def on_config_updated(_config) -> None:
-    load_field_names()
+def on_config_updated(_new_config) -> None:
+    load_config()
 
 
 def update_duplicate_display(self, first_field_result, duplicate_fields) -> None:
@@ -136,7 +78,7 @@ def get_primary_key_field_orders(self) -> list:
     return field_ords
 
 
-def create_search_query(self) -> str:
+def create_search_query(self, exclude_own_note=True) -> str:
     nid = self.id
     primary_key_cols = get_primary_key_field_orders(self)
     queries = []
@@ -148,7 +90,11 @@ def create_search_query(self) -> str:
         for name in get_field_names():
             queries.append("\"%s:%s\"" % (name, val))
 
-    return "%s(%s)" % ("-nid:%s " % nid if nid != 0 else "", " OR ".join(queries)) if len(queries) != 0 else ""
+    if len(queries) == 0:
+        return ""
+
+    prefix = "-nid:%s " % nid if nid != 0 and exclude_own_note else ""
+    return "%s(%s)" % (prefix, " OR ".join(queries))
 
 
 def is_duplicate(self, _old) -> tuple:
@@ -171,14 +117,16 @@ def show_dupes(self, _old) -> None:
 
     first_field_result, duplicate_fields = note.fields_check()
     query = ""
+    exclude_own_note = get_exclude_own_note()
 
     if first_field_result == NoteFieldsCheckResult.DUPLICATE and len(duplicate_fields) == 0:
         _old(self)
         return
     elif first_field_result == NoteFieldsCheckResult.DUPLICATE and len(duplicate_fields) != 0:
-        query = "dupe:%s,%s OR (%s)" % (note.note_type()["id"], note.fields[0], create_search_query(note))
+        query = "dupe:%s,%s OR (%s)" % (
+            note.note_type()["id"], note.fields[0], create_search_query(note, exclude_own_note))
     else:
-        query = create_search_query(note)
+        query = create_search_query(note, exclude_own_note)
 
     browser = aqt.dialogs.open("Browser", self.mw)
     browser.form.searchEdit.lineEdit().setText(query)
@@ -192,10 +140,18 @@ def setup():
     Note.fields_check = wrap(Note.fields_check, is_duplicate, "around")
     Editor.showDupes = wrap(Editor.showDupes, show_dupes, "around")
 
-    load_field_names()
+    load_config()
 
-    action = QAction("Configurable Duplicate Fields...", mw)
-    action.triggered.connect(open_config_dialog)
-    mw.form.menuTools.addAction(action)
+    tools_menu = QMenu("&Configurable Duplicate Fields", mw)
+
+    configure_action = QAction("&Config...", mw)
+    configure_action.triggered.connect(open_config_dialog)
+    tools_menu.addAction(configure_action)
+    mw.form.menuTools.addMenu(tools_menu)
+
+    if not install_browser_menu_action():
+        find_duplicates_action = QAction(BROWSER_FIND_DUPLICATES_LABEL, mw)
+        find_duplicates_action.triggered.connect(open_find_duplicates_dialog)
+        tools_menu.addAction(find_duplicates_action)
 
     mw.addonManager.setConfigUpdatedAction(__name__, on_config_updated)

@@ -1,5 +1,6 @@
 {
   "field_names": [
     "example_field"
-  ]
+  ],
+  "exclude_own_note": true
 }

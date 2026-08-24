@@ -8,7 +8,7 @@ Anki desktop add-on ("Configurable Duplicate Fields") that extends Anki's duplic
 
 - `make init` — install dev dependencies (`requirements.txt`: flake8, pytest)
 - `make flake8` (or just `flake8`) — lint; this is the CI gate (`.travis.yml`)
-- `make release` / `./release.sh` — package the add-on into `target/configurable_duplicate_fields.zip`
+- `make release` / `python release.py` — package the add-on into `target/configurable_duplicate_fields.ankiaddon` (pure-Python zipping, works without a `zip` binary)
 
 There is no test suite; pytest is listed in requirements but unused. Verification is done via `flake8` and manual testing inside Anki.
 
@@ -20,7 +20,7 @@ There is no test suite; pytest is listed in requirements but unused. Verificatio
 - `configurable_duplicate_fields/__init__.py` — editor-side duplicate checking (`check_duplicate`, `is_duplicate`, `show_dupes`) and `setup()`
 - `configurable_duplicate_fields/config.py` — config cache (`load_config` / `save_config` / `get_field_names` / `get_exclude_own_note`), its keys, and the Tools-menu config dialog (`FieldNamesDialog` / `open_config_dialog`)
 - `configurable_duplicate_fields/find_duplicates.py` — collection-wide duplicate scan: `DuplicateReportDialog` (optional search filter, Open All in Browser), `find_duplicate_groups`, and the Browser Notes-menu hook (`install_browser_menu_action`)
-- `release.sh` — build script; copies `__init__.py`, `manifest.json`, and the whole `configurable_duplicate_fields/` directory into a zip
+- `release.py` — build script; zips `__init__.py`, `manifest.json`, and the whole `configurable_duplicate_fields/` directory (skipping `__pycache__`/`.pyc`) into `target/configurable_duplicate_fields.ankiaddon`
 
 ## Architecture Notes
 

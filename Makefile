@@ -5,4 +5,4 @@ flake8:
 	flake8
 
 release:
-	./release.sh
+	python release.py

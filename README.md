@@ -52,3 +52,10 @@ the field is highlighted and a link for duplicates will be shown.
 This plugin works only in Anki desktop, not in mobile.
 
 This project is forked from https://github.com/matthayes/anki_flex_dupes although the functionality is completely different.
+
+---
+
+<a href="https://buymeacoffee.com/heigor" alt="Buy Me a Coffee" target="_blank" style="display: block;">
+    <img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png"/>
+</a>
+<img src="media/bmc_qr.png" alt="Buy Me a Coffee QR" style="display: block; width:170px; margin: 10px 0;"/>

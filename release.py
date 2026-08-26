@@ -5,7 +5,7 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 TARGET_DIR = os.path.join(ROOT_DIR, "target")
 PACKAGE_NAME = "configurable_duplicate_fields"
 
-INCLUDED_TOP_LEVEL = ["__init__.py", "manifest.json"]
+INCLUDED_TOP_LEVEL = ["__init__.py", "manifest.json", "config.json"]
 
 
 def add_file(archive, path):
